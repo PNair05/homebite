@@ -2,23 +2,14 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
 
-from ..database import get_db, Base, engine
+from ..database import get_db
 from ..models.user import User
 from ..schemas import UserCreate, UserRead
+from ..security import hash_password
 
 
 router = APIRouter()
-
-# Ensure tables exist (use Alembic for production scenarios)
-Base.metadata.create_all(bind=engine)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
 
 
 @router.post("/", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -30,7 +21,9 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
     user = User(
         email=user_in.email,
         full_name=user_in.full_name,
-        hashed_password=get_password_hash(user_in.password),
+        hashed_password=hash_password(user_in.password),
+        role=user_in.role,
+        campus_id=user_in.campus_id,
     )
     db.add(user)
     db.commit()
@@ -40,4 +33,4 @@ def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=List[UserRead])
 def list_users(db: Session = Depends(get_db)):
-    return db.query(User).order_by(User.id.desc()).all()
+    return db.query(User).order_by(User.created_at.desc()).all()

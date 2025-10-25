@@ -23,8 +23,13 @@ final class SessionViewModel: ObservableObject {
     @Published var cuisines: [String] = []
     
     func loginOrSignup() async {
-        // Placeholder: simulate network delay then create user
-        try? await Task.sleep(nanoseconds: 500_000_000)
+        // Try login; if not registered, fallback to signup
+        do {
+            _ = try await APIService.shared.login(email: email, password: password)
+        } catch {
+            _ = try? await APIService.shared.signup(fullName: name, email: email, password: password, role: "consumer", campusId: nil)
+        }
+        // Minimal mapping to local user model for now
         let newUser = User(name: name.isEmpty ? "Student" : name,
                            email: email,
                            university: university.isEmpty ? "Your University" : university,

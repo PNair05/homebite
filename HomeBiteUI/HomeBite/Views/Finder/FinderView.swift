@@ -52,7 +52,9 @@ struct FinderView: View {
                     }
                 }
             }
-            .onAppear { vm.loadMock() }
+            .onAppear {
+                Task { await vm.loadFromAPI() }
+            }
         }
     }
     

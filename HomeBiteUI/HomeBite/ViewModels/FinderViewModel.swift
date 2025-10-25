@@ -18,6 +18,34 @@ final class FinderViewModel: ObservableObject {
         dishes = MockData.dishes
     }
     
+    func loadFromAPI() async {
+        do {
+            let apiDishes = try await APIService.shared.fetchDishes()
+            self.dishes = apiDishes.map { d in
+                Dish(
+                    id: d.id,
+                    title: d.title,
+                    description: d.description ?? "",
+                    ingredients: [],
+                    price: d.price,
+                    barter: false,
+                    photoURL: d.images.first.flatMap { URL(string: $0) },
+                    tags: d.tags,
+                    cuisine: "",
+                    dietary: [],
+                    distanceMeters: nil,
+                    cookId: d.cook_id,
+                    cookName: "",
+                    cookRating: nil,
+                    coordinate: nil
+                )
+            }
+        } catch {
+            // fallback to mock on error
+            await MainActor.run { self.dishes = MockData.dishes }
+        }
+    }
+    
     var filteredDishes: [Dish] {
         dishes.filter { dish in
             var ok = true

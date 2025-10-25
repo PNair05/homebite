@@ -14,6 +14,16 @@ pip install -r requirements.txt
 - Docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/healthz
 
+### Recommended (PostgreSQL)
+
+Set the database to PostgreSQL to match production and the UUID schema:
+
+```bash
+export FC_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/homebite"
+export FC_SECRET_KEY="change-me"
+./run.sh
+```
+
 ## Configure the Database
 
 Settings are loaded from environment variables with the `FC_` prefix and `.env` file support. The default is SQLite at `sqlite:///./app.db`.
@@ -68,9 +78,31 @@ Then set `FC_DATABASE_URL` as shown above for TCP.
 
 Tables are auto-created on startup for development. For production, use Alembic migrations.
 
+If you previously ran with SQLite, the new UUID-based schema won't match prior tables. Point `FC_DATABASE_URL` to a fresh PostgreSQL database (recommended) or remove `app.db` to recreate.
+
 ## Environment variables
 
 - `FC_APP_NAME` — app title
 - `FC_DEBUG` — enable FastAPI debug
 - `FC_DATABASE_URL` — SQLAlchemy database URL
 - `FC_OPENAI_API_KEY` — optional, for AI integrations
+
+## API surface (used by iOS app)
+
+- Auth
+  - POST `/api/auth/signup` -> TokenOut
+  - POST `/api/auth/login` -> TokenOut
+  - GET `/api/auth/me` -> User
+- Dishes
+  - GET `/api/dishes` -> [Dish]
+  - GET `/api/dishes/{id}` -> Dish
+  - POST `/api/dishes` (Bearer) -> Dish
+- Orders
+  - GET `/api/orders?as=buyer|cook` (Bearer) -> [Order]
+  - POST `/api/orders` (Bearer) -> Order
+- Ratings
+  - GET `/api/ratings?dish_id=...` -> [Rating]
+  - POST `/api/ratings` (Bearer) -> Rating
+- Meta
+  - GET `/api/campuses` -> [Campus]
+  - GET `/api/tags` -> [String]
