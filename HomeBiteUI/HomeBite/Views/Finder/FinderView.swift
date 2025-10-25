@@ -38,31 +38,22 @@ struct FinderView: View {
             .toolbarTitleDisplayMode(.inline)
             .sheet(item: $selectedDish) { dish in
                 SchedulePickupSheet(date: $scheduleDate) {
-                    showBook = true
-                }
-                .presentationDetents([.medium])
-                .onDisappear { scheduleDate = Date() }
-            }
-            .sheet(isPresented: $showBook) {
-                if let dish = selectedDish {
-                    BookMealSheet(dish: dish, date: $scheduleDate) {
-                        Task {
-                            do {
-                                // Create an order for 1 quantity of the selected dish with the scheduled time
-                                let fmt = ISO8601DateFormatter()
-                                let iso = fmt.string(from: scheduleDate)
-                                let item = APIService.APIOrderItemIn(dish_id: dish.id, quantity: 1, special_instructions: nil)
-                                _ = try await APIService.shared.createOrder(items: [item], scheduledISO8601: iso, pickupNotes: nil, pickupLocation: nil)
-                                showBook = false
-                                selectedDish = nil
-                            } catch {
-                                // Handle or show error; for now, just dismiss lightly
-                                showBook = false
-                                selectedDish = nil
-                            }
+                    Task {
+                        do {
+                            // Confirm pickup by creating an order directly with the chosen time
+                            let fmt = ISO8601DateFormatter()
+                            let iso = fmt.string(from: scheduleDate)
+                            let item = APIService.APIOrderItemIn(dish_id: dish.id, quantity: 1, special_instructions: nil)
+                            _ = try await APIService.shared.createOrder(items: [item], scheduledISO8601: iso, pickupNotes: nil, pickupLocation: nil)
+                            selectedDish = nil
+                        } catch {
+                            // Optionally surface an alert; for now just dismiss
+                            selectedDish = nil
                         }
                     }
                 }
+                .presentationDetents([.medium])
+                .onDisappear { scheduleDate = Date() }
             }
             .onAppear {
                 Task { await vm.loadFromAPI() }
