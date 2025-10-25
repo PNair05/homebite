@@ -36,7 +36,7 @@ final class FinderViewModel: ObservableObject {
                     distanceMeters: nil,
                     cookId: d.cook_id,
                     cookName: "",
-                    cookRating: nil,
+                    cookRating: d.avg_rating,
                     coordinate: nil
                 )
             }

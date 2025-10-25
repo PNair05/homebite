@@ -67,6 +67,8 @@ final class APIService {
         let campus_id: UUID?
         let images: [String]
         let tags: [String]
+        let avg_rating: Double?
+        let rating_count: Int?
     }
 
     struct APIOrderItemIn: Codable { let dish_id: UUID; let quantity: Int; let special_instructions: String? }
@@ -106,6 +108,37 @@ final class APIService {
         private let enc: (Encoder) throws -> Void
         init(_ encodable: Encodable) { self.enc = encodable.encode }
         func encode(to encoder: Encoder) throws { try enc(encoder) }
+    }
+
+    // MARK: - Convenience wrappers (used by some views)
+    func get<T: Decodable>(_ path: String, query: [URLQueryItem] = [], authorized: Bool = false) async throws -> T {
+        var comps = URLComponents(url: APIConfig.shared.baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty { comps.queryItems = query }
+        let finalPath = comps.url!.path + (comps.percentEncodedQuery.map { "?\($0)" } ?? "")
+        return try await request(finalPath, method: "GET", authorized: authorized)
+    }
+
+    func post<T: Decodable, Body: Encodable>(_ path: String, body: Body, authorized: Bool = false) async throws -> T {
+        return try await request(path, method: "POST", body: body, authorized: authorized)
+    }
+
+    // MARK: - AI helpers
+    func aiSuggestTags(text: String, max: Int = 8) async throws -> [String] {
+        struct In: Codable { let text: String; let max_tags: Int }
+        return try await post("/ai/suggest-tags", body: In(text: text, max_tags: max), authorized: true)
+    }
+
+    struct APRecipe: Codable { let title: String; let ingredients: [String]; let steps: [String] }
+    func aiPantryRecipe(imagesBase64: [String], pantry: [String]) async throws -> APRecipe {
+        struct In: Codable { let images_base64: [String]; let pantry: [String] }
+        return try await post("/ai/pantry-recipe", body: In(images_base64: imagesBase64, pantry: pantry), authorized: true)
+    }
+
+    // MARK: - Recipes storage
+    struct APRecipeSaved: Codable { let id: UUID; let user_id: UUID; let title: String; let description: String?; let ingredients: [String]; let steps: [String] }
+    func saveRecipe(title: String, description: String?, ingredients: [String], steps: [String]) async throws -> APRecipeSaved {
+        struct In: Codable { let title: String; let description: String?; let ingredients: [String]; let steps: [String] }
+        return try await post("/recipes", body: In(title: title, description: description, ingredients: ingredients, steps: steps), authorized: true)
     }
 
     // MARK: - Auth

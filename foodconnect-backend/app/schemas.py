@@ -84,6 +84,8 @@ class DishRead(BaseModel):
     campus_id: Optional[uuid.UUID] = None
     images: List[str] = []
     tags: List[str] = []
+    avg_rating: float = 0
+    rating_count: int = 0
     created_at: datetime
 
 
@@ -142,6 +144,26 @@ class RatingRead(BaseModel):
     dish_id: uuid.UUID
     score: int
     comment: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Recipes
+class RecipeCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    ingredients: List[str]
+    steps: List[str]
+
+
+class RecipeRead(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    description: Optional[str] = None
+    ingredients: List[str]
+    steps: List[str]
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

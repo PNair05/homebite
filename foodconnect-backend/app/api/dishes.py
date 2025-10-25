@@ -3,7 +3,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from ..database import get_db
 from ..models.dish import Dish
@@ -11,6 +11,7 @@ from ..models.dish_image import DishImage
 from ..models.tag import Tag
 from ..models.dish_tag import DishTag
 from ..models.user import User
+from ..models.rating import Rating
 from ..schemas import DishCreate, DishRead
 from ..deps import get_current_user
 
@@ -38,6 +39,23 @@ def _collect_images_and_tags(db: Session, dish_ids: list[uuid.UUID]):
     return images_map, tags_map
 
 
+def _collect_rating_stats(db: Session, dish_ids: list[uuid.UUID]):
+    avg_map: dict[uuid.UUID, float] = {d: 0.0 for d in dish_ids}
+    cnt_map: dict[uuid.UUID, int] = {d: 0 for d in dish_ids}
+    if not dish_ids:
+        return avg_map, cnt_map
+    rows = (
+        db.query(Rating.dish_id, func.avg(Rating.score), func.count(Rating.id))
+        .filter(Rating.dish_id.in_(dish_ids))
+        .group_by(Rating.dish_id)
+        .all()
+    )
+    for d_id, avg_, cnt in rows:
+        avg_map[d_id] = float(avg_ or 0)
+        cnt_map[d_id] = int(cnt or 0)
+    return avg_map, cnt_map
+
+
 @router.get("/", response_model=List[DishRead])
 def list_dishes(
     db: Session = Depends(get_db),
@@ -56,6 +74,7 @@ def list_dishes(
     rows = query.order_by(Dish.created_at.desc()).limit(limit).offset(offset).all()
     ids = [r.id for r in rows]
     images_map, tags_map = _collect_images_and_tags(db, ids)
+    avg_map, cnt_map = _collect_rating_stats(db, ids)
     requested_tags = [t.strip().lower() for t in (tags.split(",") if tags else []) if t.strip()]
     out: list[DishRead] = []
     for d in rows:
@@ -77,6 +96,8 @@ def list_dishes(
                 campus_id=d.campus_id,
                 images=images_map.get(d.id, []),
                 tags=current_tags,
+                avg_rating=avg_map.get(d.id, 0.0),
+                rating_count=cnt_map.get(d.id, 0),
                 created_at=d.created_at,
             )
         )
@@ -89,6 +110,7 @@ def get_dish(dish_id: uuid.UUID, db: Session = Depends(get_db)):
     if not d:
         raise HTTPException(status_code=404, detail="Dish not found")
     imgs, tmap = _collect_images_and_tags(db, [d.id])
+    avg_map, cnt_map = _collect_rating_stats(db, [d.id])
     return DishRead(
         id=d.id,
         cook_id=d.cook_id,
@@ -103,6 +125,8 @@ def get_dish(dish_id: uuid.UUID, db: Session = Depends(get_db)):
         campus_id=d.campus_id,
         images=imgs.get(d.id, []),
         tags=tmap.get(d.id, []),
+        avg_rating=avg_map.get(d.id, 0.0),
+        rating_count=cnt_map.get(d.id, 0),
         created_at=d.created_at,
     )
 

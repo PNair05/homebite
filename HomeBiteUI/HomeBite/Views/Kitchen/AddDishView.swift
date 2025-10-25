@@ -24,6 +24,9 @@ struct AddDishView: View {
     @State private var pantryNewItem: String = ""
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var pantryImages: [UIImage] = []
+    @State private var isTagLoading: Bool = false
+    @State private var isRecipeLoading: Bool = false
+    @State private var recipeResult: (title: String, ingredients: [String], steps: [String])? = nil
     
     var body: some View {
         NavigationStack {
@@ -44,12 +47,62 @@ struct AddDishView: View {
             }
             .navigationTitle(mode == .addDish ? "Add New Dish" : "Hire a Chef")
             .toolbar { toolbarContent }
+            .sheet(item: Binding(get: {
+                recipeResult.map { RecipeSheetData(title: $0.title, ingredients: $0.ingredients, steps: $0.steps) }
+            }, set: { _ in
+                recipeResult = nil
+            })) { sheet in
+                RecipeSheetView(data: sheet) {
+                    Task {
+                        try? await APIService.shared.saveRecipe(title: sheet.title, description: nil, ingredients: sheet.ingredients, steps: sheet.steps)
+                        recipeResult = nil
+                        dismissSheet()
+                    }
+                }
+            }
         }
     }
 }
 
 #Preview {
     AddDishView(dish: .constant(MockData.dishes[0])) { }.environmentObject(SessionViewModel())
+}
+
+// MARK: - Recipe sheet
+private struct RecipeSheetData: Identifiable {
+    let id = UUID()
+    let title: String
+    let ingredients: [String]
+    let steps: [String]
+}
+
+private struct RecipeSheetView: View {
+    let data: RecipeSheetData
+    var onSave: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Ingredients") {
+                    ForEach(data.ingredients, id: \.self) { Text($0) }
+                }
+                Section("Steps") {
+                    ForEach(Array(data.steps.enumerated()), id: \.offset) { i, s in
+                        HStack(alignment: .top) {
+                            Text("\(i+1).").bold()
+                            Text(s)
+                        }
+                    }
+                }
+            }
+            .navigationTitle(data.title)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save to Profile") { onSave() }
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Subviews & helpers
@@ -118,7 +171,17 @@ extension AddDishView {
                 }
                 .tint(.brandGreen)
             }
-            Text("Tags are suggested by AI (editable)").font(.footnote).foregroundStyle(.secondary)
+            HStack {
+                Button {
+                    Task { await suggestTagsFromAI() }
+                } label: {
+                    if isTagLoading { ProgressView() } else { Label("Suggest Tags", systemImage: "sparkles") }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.brandGreen)
+                Text("Tags are suggested by AI (editable)").font(.footnote).foregroundStyle(.secondary)
+                Spacer()
+            }
         }
     }
 
@@ -224,17 +287,30 @@ extension AddDishView {
     }
 
     private func submitHireChef() async {
-        // Convert images to base64 strings (placeholder approach)
-        let base64s: [String] = pantryImages.compactMap { ui in
-            ui.jpegData(compressionQuality: 0.6)?.base64EncodedString()
-        }
-        let body = HireChefRequest(title: requestTitle, tags: hireTags, pantry: pantryItems, imagesBase64: base64s)
+        isRecipeLoading = true
+        // Convert images to base64 strings
+        let base64s: [String] = pantryImages.compactMap { ui in ui.jpegData(compressionQuality: 0.6)?.base64EncodedString() }
         do {
-            struct Success: Decodable { let ok: Bool }
-            let _: Success = try await APIService.shared.post("/hire-chef", body: body)
+            let recipe = try await APIService.shared.aiPantryRecipe(imagesBase64: base64s, pantry: pantryItems)
+            self.recipeResult = (title: recipe.title, ingredients: recipe.ingredients, steps: recipe.steps)
         } catch {
-            // For now, ignore network failure and just proceed to dismiss
+            self.recipeResult = (title: "AI Recipe", ingredients: pantryItems, steps: ["Unable to generate detailed steps right now."])
         }
-        dismissSheet()
+        isRecipeLoading = false
+    }
+
+    private func suggestTagsFromAI() async {
+        isTagLoading = true
+        let source = [dish.title, dish.description, dish.cuisine, dish.ingredients.joined(separator: ", ")]
+            .compactMap { $0 }
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n")
+        do {
+            let tags = try await APIService.shared.aiSuggestTags(text: source, max: 8)
+            var merged = Set(dish.tags.map { $0.lowercased() })
+            for t in tags { merged.insert(t.lowercased()) }
+            dish.tags = Array(merged).sorted()
+        } catch { /* ignore */ }
+        isTagLoading = false
     }
 }

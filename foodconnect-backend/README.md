@@ -21,6 +21,7 @@ Set the database to PostgreSQL to match production and the UUID schema:
 ```bash
 export FC_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/homebite"
 export FC_SECRET_KEY="change-me"
+export FC_GOOGLE_API_KEY="<YOUR_GOOGLE_GEMINI_API_KEY>"
 ./run.sh
 ```
 
@@ -58,7 +59,7 @@ FC_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@/DBNAME?host=/cloudsql/PROJEC
 
 Note: We installed `psycopg[binary]` for convenience in development. For production, consider using the standard `psycopg` with system libpq and SSL certificates as needed.
 
-## Using Cloud SQL Auth Proxy (optional but recommended for local dev)
+## Using Cloud SQL (two options)
 
 - Install (macOS):
 
@@ -74,6 +75,19 @@ cloud-sql-proxy PROJECT:REGION:INSTANCE --port 5432
 
 Then set `FC_DATABASE_URL` as shown above for TCP.
 
+### Direct connector (no proxy)
+
+Alternatively, you can connect without a proxy using the Cloud SQL Python Connector (already included in requirements):
+
+```bash
+export FC_CLOUDSQL_INSTANCE="PROJECT:REGION:INSTANCE"
+export FC_DB_USER="db_user"
+export FC_DB_PASSWORD="db_password"   # optional if using IAM auth
+export FC_DB_NAME="db_name"
+```
+
+Ensure your environment has Google credentials with Cloud SQL Client role (e.g., set `GOOGLE_APPLICATION_CREDENTIALS=/path/key.json` or run on GCP with a suitable service account). When `FC_CLOUDSQL_INSTANCE` is set, the app will use the connector automatically.
+
 ## Migrations
 
 Tables are auto-created on startup for development. For production, use Alembic migrations.
@@ -86,6 +100,9 @@ If you previously ran with SQLite, the new UUID-based schema won't match prior t
 - `FC_DEBUG` — enable FastAPI debug
 - `FC_DATABASE_URL` — SQLAlchemy database URL
 - `FC_OPENAI_API_KEY` — optional, for AI integrations
+- `FC_GOOGLE_API_KEY` — Google Gemini API key for AI features
+- `FC_CLOUDSQL_INSTANCE` — optional Cloud SQL instance string `PROJECT:REGION:INSTANCE` (enables direct connector)
+- `FC_DB_USER`, `FC_DB_PASSWORD`, `FC_DB_NAME` — DB credentials for the connector
 
 ## API surface (used by iOS app)
 
@@ -106,3 +123,10 @@ If you previously ran with SQLite, the new UUID-based schema won't match prior t
 - Meta
   - GET `/api/campuses` -> [Campus]
   - GET `/api/tags` -> [String]
+- AI
+  - POST `/api/ai/suggest-tags` (Bearer) -> [String]
+    - body: `{ "text": string, "max_tags": number }`
+  - POST `/api/ai/pantry-recipe` (Bearer) -> `{ title, ingredients[], steps[] }`
+- Recipes
+  - POST `/api/recipes` (Bearer) -> save recipe
+  - GET `/api/recipes/me` (Bearer) -> list my recipes
