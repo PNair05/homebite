@@ -8,7 +8,7 @@ from ..models.order import Order, OrderStatus
 from ..models.order_item import OrderItem
 from ..models.dish import Dish
 from ..models.user import User
-from ..schemas import OrderCreate, OrderRead, OrderItemRead
+from ..schemas import OrderCreate, OrderRead, OrderItemRead, OrderScheduleUpdate
 from ..deps import get_current_user
 
 router = APIRouter()
@@ -95,3 +95,29 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db), current_us
     order.total = total
     db.commit()
     return get_order(order.id, db, current_user)
+
+
+@router.patch("/{order_id}/schedule", response_model=OrderRead)
+def schedule_order(
+    order_id: uuid.UUID,
+    payload: OrderScheduleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    o = db.query(Order).filter(Order.id == order_id).first()
+    if not o:
+        raise HTTPException(status_code=404, detail="Order not found")
+    # Only buyer or cook can schedule/update
+    if o.buyer_id != current_user.id and o.cook_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    o.scheduled_pickup = payload.scheduled_pickup
+    if payload.pickup_notes is not None:
+        o.pickup_notes = payload.pickup_notes
+    if payload.pickup_location is not None:
+        o.pickup_location = payload.pickup_location
+    # Mark as confirmed when a pickup time is set
+    if o.status == OrderStatus.pending:
+        o.status = OrderStatus.confirmed
+    db.add(o)
+    db.commit()
+    return get_order(o.id, db, current_user)

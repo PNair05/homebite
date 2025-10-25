@@ -46,9 +46,21 @@ struct FinderView: View {
             .sheet(isPresented: $showBook) {
                 if let dish = selectedDish {
                     BookMealSheet(dish: dish, date: $scheduleDate) {
-                        // Simulate booking confirmation
-                        showBook = false
-                        selectedDish = nil
+                        Task {
+                            do {
+                                // Create an order for 1 quantity of the selected dish with the scheduled time
+                                let fmt = ISO8601DateFormatter()
+                                let iso = fmt.string(from: scheduleDate)
+                                let item = APIService.APIOrderItemIn(dish_id: dish.id, quantity: 1, special_instructions: nil)
+                                _ = try await APIService.shared.createOrder(items: [item], scheduledISO8601: iso, pickupNotes: nil, pickupLocation: nil)
+                                showBook = false
+                                selectedDish = nil
+                            } catch {
+                                // Handle or show error; for now, just dismiss lightly
+                                showBook = false
+                                selectedDish = nil
+                            }
+                        }
                     }
                 }
             }
