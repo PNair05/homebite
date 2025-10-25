@@ -131,6 +131,12 @@ class OrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class OrderScheduleUpdate(BaseModel):
+    scheduled_pickup: datetime
+    pickup_notes: Optional[str] = None
+    pickup_location: Optional[str] = None
+
+
 # Ratings
 class RatingCreate(BaseModel):
     dish_id: uuid.UUID

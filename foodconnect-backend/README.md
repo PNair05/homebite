@@ -88,6 +88,32 @@ export FC_DB_NAME="db_name"
 
 Ensure your environment has Google credentials with Cloud SQL Client role (e.g., set `GOOGLE_APPLICATION_CREDENTIALS=/path/key.json` or run on GCP with a suitable service account). When `FC_CLOUDSQL_INSTANCE` is set, the app will use the connector automatically.
 
+Quickstart for this project (Connector, macOS/zsh):
+
+```bash
+# 1) Activate your virtualenv in foodconnect-backend/
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2) Provide credentials (pick one)
+# a) Service account key
+export GOOGLE_APPLICATION_CREDENTIALS="/absolute/path/to/service-account.json"
+# b) Or user ADC
+gcloud auth application-default login
+
+# 3) Set Cloud SQL connector env vars (instance: tamu-hackathon25cll-546:us-central1:homebite-tidal-f25)
+export FC_CLOUDSQL_INSTANCE="tamu-hackathon25cll-546:us-central1:homebite-tidal-f25"
+export FC_DB_USER="postgres"
+export FC_DB_PASSWORD="<your-postgres-password>"   # plain (do NOT URL-encode here)
+export FC_DB_NAME="postgres"
+
+# 4) Run the API
+./run.sh
+
+# Health check
+# open http://localhost:8000/healthz
+```
+
 ## Migrations
 
 Tables are auto-created on startup for development. For production, use Alembic migrations.
