@@ -13,11 +13,11 @@ struct OnboardingView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    Text("CampusBites")
+                    Text("HomeBites")
                         .font(.largeTitle.bold())
                         .foregroundStyle(Color.brandGreen)
                         .padding(.top, 24)
-                    Text("Share, buy, or sell home-cooked meals on campus.")
+                    Text("Buy or sell home-cooked meals on campus.")
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 8)
