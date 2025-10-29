@@ -10,11 +10,12 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
     openai_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
-    # Optional: Cloud SQL direct connector configuration
-    cloudsql_instance: Optional[str] = None  # format: PROJECT:REGION:INSTANCE
+    # AWS-friendly generic DB fields (use FC_DATABASE_URL in most cases)
     db_user: Optional[str] = None
     db_password: Optional[str] = None
     db_name: Optional[str] = None
+    db_host: Optional[str] = None
+    db_port: Optional[int] = None
 
     # Environment variables will be prefixed with FC_
     # e.g., FC_DATABASE_URL, FC_DEBUG, FC_OPENAI_API_KEY

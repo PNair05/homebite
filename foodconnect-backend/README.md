@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ### Recommended (PostgreSQL)
 
-Set the database to PostgreSQL to match production and the UUID schema:
+Point the backend at PostgreSQL (AWS RDS is recommended for production):
 
 ```bash
 export FC_DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/homebite"
@@ -59,34 +59,24 @@ FC_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@/DBNAME?host=/cloudsql/PROJEC
 
 Note: We installed `psycopg[binary]` for convenience in development. For production, consider using the standard `psycopg` with system libpq and SSL certificates as needed.
 
-## Using Cloud SQL (two options)
+## AWS RDS (PostgreSQL)
 
-- Install (macOS):
-
-```bash
-brew install cloud-sql-proxy
-```
-
-- Start the proxy (TCP, localhost:5432):
+Use the standard Postgres URL to connect to your RDS instance (public or private endpoint).
 
 ```bash
-cloud-sql-proxy PROJECT:REGION:INSTANCE --port 5432
+export FC_DATABASE_URL="postgresql+psycopg://<USER>:<ENCODED_PASS>@<RDS_ENDPOINT>:5432/<DB_NAME>"
+./run.sh
 ```
 
-Then set `FC_DATABASE_URL` as shown above for TCP.
+Notes:
 
-### Direct connector (no proxy)
+- If your password contains special characters, URL-encode it in the URL.
+- For private endpoints, run the API where it can reach the RDS network (VPC, VPN, or SSH tunnel).
+- For SSL, psycopg `sslmode=require` is default on many hosts; you can append `?sslmode=require` if needed.
 
-Alternatively, you can connect without a proxy using the Cloud SQL Python Connector (already included in requirements):
+Optional (IAM auth):
 
-```bash
-export FC_CLOUDSQL_INSTANCE="PROJECT:REGION:INSTANCE"
-export FC_DB_USER="db_user"
-export FC_DB_PASSWORD="db_password"   # optional if using IAM auth
-export FC_DB_NAME="db_name"
-```
-
-Ensure your environment has Google credentials with Cloud SQL Client role (e.g., set `GOOGLE_APPLICATION_CREDENTIALS=/path/key.json` or run on GCP with a suitable service account). When `FC_CLOUDSQL_INSTANCE` is set, the app will use the connector automatically.
+- You can generate short-lived auth tokens using AWS IAM (requires adding `boto3` and a small hook). For now, prefer a standard DB password for simplicity.
 
 Quickstart for this project (Connector, macOS/zsh):
 
@@ -127,8 +117,6 @@ If you previously ran with SQLite, the new UUID-based schema won't match prior t
 - `FC_DATABASE_URL` — SQLAlchemy database URL
 - `FC_OPENAI_API_KEY` — optional, for AI integrations
 - `FC_GOOGLE_API_KEY` — Google Gemini API key for AI features
-- `FC_CLOUDSQL_INSTANCE` — optional Cloud SQL instance string `PROJECT:REGION:INSTANCE` (enables direct connector)
-- `FC_DB_USER`, `FC_DB_PASSWORD`, `FC_DB_NAME` — DB credentials for the connector
 
 ## API surface (used by iOS app)
 
