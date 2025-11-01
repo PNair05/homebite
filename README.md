@@ -1,6 +1,6 @@
-# CampusBites (SwiftUI)
+# HomeBite (SwiftUI)
 
-CampusBites is an iOS SwiftUI app for university students to share, buy, or sell home-cooked meals.
+HomeBite is an iOS SwiftUI app for university students to share, buy, or sell home-cooked meals.
 
 ## Features
 
@@ -23,9 +23,9 @@ CampusBites is an iOS SwiftUI app for university students to share, buy, or sell
 ## Run
 
 Open `HomeBite.xcodeproj` in Xcode 15+, and build/run on iOS 17+ simulator.
-The app entry `HomeBiteApp` now loads `CampusBitesRootView`.
+The app entry `HomeBiteApp` now loads `HomeBiteRootView`.
 
-If you want the app name on the Home Screen to show "CampusBites", set Bundle Display Name in Info.plist accordingly.
+If you want the app name on the Home Screen to show "HomeBite", set Bundle Display Name in Info.plist accordingly.
 
 ## Backend
 
